@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Xml.Linq;
 
 namespace Xml2CSharp
@@ -20,20 +23,33 @@ namespace Xml2CSharp
 
         private static Class ElementToClass(XElement xElement, ICollection<Class> classes)
         {
+            var completeName = GetCompleteName(xElement, xElement.Parent);
+
             var @class = new Class
             {
-                Name = xElement.Name.LocalName,
+                Name = completeName,
                 XmlName = xElement.Name.LocalName,
-                Fields =  ReplaceDuplicatesWithLists(ExtractFields(xElement, classes)).ToList(),
+                Fields = ReplaceDuplicatesWithLists(ExtractFields(xElement, classes)).ToList(),
                 Namespace = xElement.Name.NamespaceName
             };
 
             SafeName(@class, @classes);
-            
-            if (xElement.Parent == null || (!@classes.Contains(@class) && @class.Fields.Any()))
+
+            if (xElement.Parent == null || (!@classes.Any(ci => ci.Name.Equals(@class.Name) && ci.XmlName.Equals(@class.XmlName)) && @class.Fields.Any()))
                 @classes.Add(@class);
+            else
+                Debug.WriteLine(@class.Name + "\n" + @class.XmlName);
 
             return @class;
+
+        }
+
+        private static string GetCompleteName(XElement xElement, XElement xParentElement)
+        {
+            if (xParentElement == null)
+                return xElement.Name.LocalName;
+
+            return GetCompleteName(xParentElement, xParentElement.Parent) + xElement.Name.LocalName;
 
         }
 
@@ -79,7 +95,7 @@ namespace Xml2CSharp
                             Type = string.Format("List<{0}>", g.First().Type),
                             XmlName = g.First().Type,
                             XmlType = XmlType.Element
-                        } : 
+                        } :
                         g.First()).ToList();
         }
 
